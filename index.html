@@ -798,7 +798,6 @@
         </div>
         <hr class="account-divider">
         <div id="accountIdentity" style="">
-          <div class="account-eyebrow" id="accountPaddle" style="">Registered as paddle 7000</div>
           <div class="account-name">Mr Joseph Doe</div>
           <div class="account-email">joe.doe1989@gmail.com</div>
         </div>
@@ -1355,17 +1354,14 @@
     function renderAccountSheet() {
       const body = document.getElementById("accountBody");
       const identity = document.getElementById("accountIdentity");
-      const paddle = document.getElementById("accountPaddle");
       const btn = document.getElementById("accountBtn");
       if (userState === "registered") {
         body.textContent = "You are registered for the auction and can bid live in the Digital Saleroom. For further assistance, please contact our Bids Department.";
         identity.style.display = "";
-        paddle.style.display = "";
         btn.textContent = "View your account";
       } else if (userState === "logged-in") {
         body.textContent = "You are logged in but not yet registered for this auction. Register to bid live in the Digital Saleroom.";
         identity.style.display = "";
-        paddle.style.display = "none";
         btn.textContent = "Register to bid";
       } else {
         body.textContent = "You are watching this auction. Log in or create an account to register and bid live in the Digital Saleroom.";
