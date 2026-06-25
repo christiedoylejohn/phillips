@@ -1317,7 +1317,11 @@
 
     // Advance to the next lot in lot-number order and open it for fresh bidding.
     function advanceLot() {
-      lotIndex = (lotIndex + 1) % ALL_LOTS.length;
+      // Advance from whatever lot is currently shown, so it always steps 1 -> 2 -> 3...
+      const curNo = parseInt(document.getElementById("lotNo").textContent, 10);
+      let idx = ALL_LOTS.findIndex((l) => l.no === curNo);
+      if (idx < 0) idx = lotIndex;
+      lotIndex = (idx + 1) % ALL_LOTS.length;
       const l = ALL_LOTS[lotIndex];
       const est = l.estimate || "$1,000,000–1,500,000";
       const low = parseInt((est.replace(/,/g, "").match(/\d+/) || ["1000000"])[0], 10);
@@ -1488,6 +1492,13 @@
           const soldLine = "<b>Sold for</b> " + fmt(current);
           document.getElementById("lotEstimate").innerHTML = soldLine;
           document.getElementById("sheetLotEstimate").innerHTML = soldLine;
+          document.getElementById("lfLotEstimate").innerHTML = soldLine;
+          // Record the result so it appears in the All-lots "Results" tab (newest first).
+          const soldNo = parseInt(document.getElementById("lotNo").textContent, 10);
+          const si = ALL_LOTS.findIndex((l) => l.no === soldNo);
+          if (si >= 0) { ALL_LOTS[si].sold = true; ALL_LOTS[si].amount = fmt(current); ALL_LOTS[si].live = false; }
+          const activePill = document.querySelector(".al-pill.is-on");
+          renderAllLots(activePill ? activePill.textContent.trim() : "All lots");
           syncBidding();
           syncPanel();
         }
