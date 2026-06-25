@@ -223,6 +223,29 @@
     }
     .phone.landscape .fs-live { display: inline-flex; }
 
+    /* Picture-in-picture live feed — a small floating player shown while the
+       Lot view / All lots panels cover the main video. Pinned top-right, clear
+       of the bidding panel at the bottom. Tap to jump back to the live view. */
+    .pip-video {
+      position: absolute; top: 110px; right: 12px; z-index: 13;
+      width: 112px; height: 150px; padding: 0; border: 0; cursor: pointer;
+      border-radius: 10px; overflow: hidden; background: #000;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+      display: none;
+    }
+    .phone.lotfull-open .pip-video,
+    .phone.view-all-lots .pip-video { display: block; }
+    /* In landscape watch the full video is already on screen — hide the PiP. */
+    .phone.landscape .pip-video { display: none; }
+    .pip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pip-live {
+      position: absolute; top: 8px; left: 8px;
+      display: inline-flex; align-items: center; gap: 5px;
+      color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .pip-live .tab-dot { width: 7px; height: 7px; }
+
     /* ===================== The lot card (rises above video) ===================== */
     /* Wrapper anchored to bottom. It holds the rising bid-history chips and the
        white bid card. The whole surface is capped so its top never crosses the
@@ -572,7 +595,7 @@
     /* Status bar + home indicator flip to dark so they read over the white panel */
     .phone.lotfull-open .status-bar { color: #000; z-index: 10; }
     .phone.lotfull-open .home-indicator { background: #111; z-index: 10; }
-    .lf-top { position: relative; flex: none; height: 44px; margin-top: 54px; }
+    .lf-top { position: relative; flex: none; height: 44px; margin-top: 56px; }
     .lf-tabs { height: 44px; display: flex; align-items: center; justify-content: center; gap: 16px; }
     .lf-tab {
       font-size: 16px; font-weight: 600; color: rgba(0,0,0,0.5);
@@ -581,7 +604,7 @@
     }
     .lf-tab.is-active { color: #000; }
     .lf-chevron, .lf-account {
-      position: absolute; top: 10px; width: 24px; height: 24px;
+      position: absolute; top: 8px; width: 24px; height: 24px;
       background: none; border: 0; padding: 0; cursor: pointer; color: #000;
     }
     .lf-chevron { left: 16px; }
@@ -686,11 +709,10 @@
     /* Masthead matches the live view exactly: wordmark at top:56, tabs 14px
        below, back arrow + account pinned to the phone edges. */
     .al-top { position: relative; padding: 56px 16px 0; flex: none; }
-    .al-wordmark { font-family: "Distinct Display", serif; text-align: center; font-size: 18px; letter-spacing: 0.42em; text-indent: 0.42em; color: #000; }
     .al-chevron, .al-account { position: absolute; top: 56px; z-index: 8; background: none; border: 0; padding: 8px; cursor: pointer; color: #000; display: inline-flex; }
     .al-chevron { left: 8px; }
     .al-account { right: 8px; }
-    .al-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px; height: 44px; }
+    .al-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 0; height: 44px; }
     .al-tab { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 16px; font-weight: 600; color: #b3b1ad; }
     .al-tab.is-active { color: #000; }
     .al-count { font-size: 18px; font-weight: 400; color: #000; margin: 16px 0 12px; }
@@ -775,6 +797,12 @@
 
     <!-- Live indicator — only visible during landscape watch -->
     <span class="fs-live" aria-hidden="true"><span class="tab-dot"></span>Live</span>
+
+    <!-- Picture-in-picture live feed — shown over Lot view & All lots; tap to return to Live -->
+    <button class="pip-video" id="pipVideo" aria-label="Return to live video">
+      <img class="pip-img" id="pipImg" alt="">
+      <span class="pip-live"><span class="tab-dot"></span>Live</span>
+    </button>
 
     <!-- ===== Holding screen (pre-sale, Figma 7580:63634) ===== -->
     <div class="holding-screen" aria-hidden="true">
@@ -917,7 +945,6 @@
     <!-- ===== All lots view (Figma 7746:128382) ===== -->
     <div class="all-lots" id="allLots" aria-hidden="true">
       <div class="al-top">
-        <div class="al-wordmark">PHILLIPS</div>
         <button class="al-chevron" data-altab="live" aria-label="Back to live">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         </button>
@@ -973,7 +1000,6 @@
     <div class="panel-group">
       <p>User</p>
       <div class="panel-row">
-        <button data-user="logged-out" class="">Watch only</button>
         <button data-user="logged-in" class="">Logged in</button>
         <button data-user="registered" class="is-selected">Registered</button>
       </div>
@@ -1087,7 +1113,7 @@
     let bids = [];
     let fairWarning = false; // auctioneer's call — cleared by the next bid
     let lotState = "live";   // "live" | "sold" (hammer fallen)
-    let userState = "registered"; // "registered" | "logged-in" | "logged-out"
+    let userState = "registered"; // "registered" | "logged-in"
     let feedAlign     = "left";    // "left" | "center"
     let sheetSize     = "full";    // "full" | "half"
     let cardStyle     = "floating"; // "floating" | "fullbleed"
@@ -1255,7 +1281,6 @@
       sel('[data-action="safe"]', phone.classList.contains("show-safe"));
       sel('[data-action="fairWarning"]', fairWarning);
       sel('[data-action="hammer"]', lotState === "sold");
-      sel('[data-user="logged-out"]', userState === "logged-out");
       sel('[data-user="logged-in"]', userState === "logged-in");
       sel('[data-user="registered"]', userState === "registered");
       sel('[data-feed="left"]', feedAlign === "left");
@@ -1366,7 +1391,7 @@
       if (userState === "registered") return false;
       placeBid.classList.remove("is-with-you", "is-won", "is-disabled-state");
       placeBid.disabled = false;
-      placeBid.textContent = userState === "logged-out" ? "Log in to bid" : "Register to bid";
+      placeBid.textContent = "Register to bid";
       return true;
     }
 
@@ -1557,15 +1582,11 @@
         identity.style.display = "";
         paddle.style.display = "";
         btn.textContent = "View your account";
-      } else if (userState === "logged-in") {
+      } else {
         body.textContent = "You are logged in but not yet registered for this auction. Register to bid live in the Digital Saleroom.";
         identity.style.display = "";
         paddle.style.display = "none";
         btn.textContent = "Register to bid";
-      } else {
-        body.textContent = "You are watching this auction. Log in or create an account to register and bid live in the Digital Saleroom.";
-        identity.style.display = "none";
-        btn.textContent = "Log in";
       }
     }
 
@@ -1597,8 +1618,7 @@
     // The sheet's button advances the auth flow: Log in → logged-in,
     // Register → registered, View your account → no-op (out of scope).
     document.getElementById("accountBtn").addEventListener("click", () => {
-      if (userState === "logged-out") { setUserState("logged-in"); renderAccountSheet(); }
-      else if (userState === "logged-in") { setUserState("registered"); closeAccount(); }
+      if (userState === "logged-in") { setUserState("registered"); closeAccount(); }
     });
 
     document.querySelectorAll("[data-user]").forEach((b) =>
@@ -1613,6 +1633,11 @@
     }
     document.querySelectorAll(".tab").forEach((t) =>
       t.addEventListener("click", () => navTo(t.textContent.trim())));
+
+    // PiP live feed: reuse the main video still, tap to return to Live.
+    const pipImg = document.getElementById("pipImg");
+    pipImg.src = document.querySelector(".video").src;
+    document.getElementById("pipVideo").addEventListener("click", () => navTo("Live"));
 
     // Mute toggles between muted / unmuted speaker
     const muteBtn = document.querySelector(".vc-btn");
