@@ -180,8 +180,9 @@
     .nav-icon.back { left: 8px; }
     .nav-icon.account { right: 8px; }
 
-    /* Stream controls stack vertically on the right rail, below the nav row. */
-    .video-controls { position: absolute; top: 124px; right: 8px; z-index: 6; }
+    /* Stream controls stack vertically on the right rail, evenly spaced
+       below the account icon (48px step = matching 8px gaps). */
+    .video-controls { position: absolute; top: 104px; right: 8px; z-index: 6; }
     .vc-btn {
       width: 40px; height: 40px; border: 0; background: none;
       color: #fff; display: grid; place-items: center; cursor: pointer;
@@ -189,7 +190,7 @@
     }
 
     /* Full-screen / landscape watch — available to all users by default */
-    .fs-controls { position: absolute; top: 172px; right: 8px; z-index: 6; }
+    .fs-controls { position: absolute; top: 152px; right: 8px; z-index: 6; }
     .fs-btn {
       width: 40px; height: 40px; border: 0; background: none;
       color: #fff; display: grid; place-items: center; cursor: pointer;
