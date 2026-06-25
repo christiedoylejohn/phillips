@@ -580,8 +580,8 @@
     .lot-detail-text { margin-top: 12px; }
     .lot-detail-head { font-size: 12px; font-weight: 600; line-height: 16px; letter-spacing: 0.02em; color: #000; margin-bottom: 4px; }
     .lot-detail-text p { font-size: 12px; line-height: 16px; color: #000; font-weight: 400; margin-top: 2px; }
-    /* Lot view: keyline divider between the lot info and Lot details (Figma keyline) */
-    #lotFull .lot-detail-text { border-top: 1px solid #eceae7; margin-top: 16px; padding-top: 16px; }
+    /* Lot view: no keylines around Lot details */
+    #lotFull .lot-detail-text { margin-top: 16px; padding-top: 0; }
     /* CTA stacks current bid label + amount above the button */
     /* ===== Lot view — full-screen, separate control. Opaque white over the
        still-playing video (video runs behind, hidden until close). Slides up
@@ -621,6 +621,8 @@
     .lf-thumb { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: contain; display: block; margin: 12px 0; }
 
     .sheet-cta { flex: none; padding: 14px 16px 30px; background: #fff; border-top: 1px solid #eceae7; }
+    /* Lot view: drop the keyline above the bidding panel */
+    #lotFull .sheet-cta { border-top: 0; }
     .sheet-cta .current-label { font-size: 14px; color: var(--black-75); }
     .sheet-cta .sheet-amount { margin: 2px 0 0; }
     .sheet-cta-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -1514,6 +1516,7 @@
       const showAll = label === "All lots";
       phone.classList.toggle("view-all-lots", showAll);
       if (allLots) allLots.setAttribute("aria-hidden", String(!showAll));
+      repositionPip();
     }
 
     function openSheet() {
@@ -1643,50 +1646,63 @@
     // (without dragging) returns to the live view.
     const pip = document.getElementById("pipVideo");
     document.getElementById("pipImg").src = document.querySelector(".video").src;
-    (() => {
-      const SIDE = 12, BOTTOM = 24, TOP_MIN = 56;
-      let dragging = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
-      const scale = () => (pip.getBoundingClientRect().width / pip.offsetWidth) || 1;
-      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-      const bounds = () => ({
-        minL: SIDE, maxL: phone.clientWidth - pip.offsetWidth - SIDE,
-        minT: TOP_MIN, maxT: phone.clientHeight - pip.offsetHeight - BOTTOM,
-      });
-      function snap() {
-        const b = bounds();
-        const cx = pip.offsetLeft + pip.offsetWidth / 2;
-        const cy = pip.offsetTop + pip.offsetHeight / 2;
-        pip.style.left = (cx < phone.clientWidth / 2 ? b.minL : b.maxL) + "px";
-        pip.style.top = (cy < phone.clientHeight / 2 ? b.minT : b.maxT) + "px";
-        pip.style.right = "auto"; pip.style.bottom = "auto";
+    const PIP_SIDE = 12, PIP_BOTTOM = 24, PIP_TOP_MIN = 56, PIP_GAP = 12;
+    let pipCornerH = "r", pipCornerV = "b";
+    let pipDragging = false, pipMoved = false, pipSX = 0, pipSY = 0, pipOX = 0, pipOY = 0;
+    const pipScale = () => (pip.getBoundingClientRect().width / pip.offsetWidth) || 1;
+    const pipClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    function pipBounds() {
+      // The PiP can never overlap the bidding panel: in Lot view the bottom
+      // limit is the top of the bidding CTA, not the bottom of the screen.
+      let maxT = phone.clientHeight - pip.offsetHeight - PIP_BOTTOM;
+      if (phone.classList.contains("lotfull-open")) {
+        const cta = lotFull.querySelector(".sheet-cta");
+        if (cta) maxT = Math.min(maxT, cta.offsetTop - pip.offsetHeight - PIP_GAP);
       }
-      pip.addEventListener("pointerdown", (e) => {
-        dragging = true; moved = false;
-        const pr = phone.getBoundingClientRect(), r = pip.getBoundingClientRect(), s = scale();
-        ox = (r.left - pr.left) / s; oy = (r.top - pr.top) / s;
-        sx = e.clientX; sy = e.clientY;
-        pip.style.left = ox + "px"; pip.style.top = oy + "px";
-        pip.style.right = "auto"; pip.style.bottom = "auto";
-        pip.classList.add("is-dragging");
-        pip.setPointerCapture(e.pointerId);
-      });
-      pip.addEventListener("pointermove", (e) => {
-        if (!dragging) return;
-        const s = scale();
-        const dx = (e.clientX - sx) / s, dy = (e.clientY - sy) / s;
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
-        const b = bounds();
-        pip.style.left = clamp(ox + dx, b.minL, b.maxL) + "px";
-        pip.style.top = clamp(oy + dy, b.minT, b.maxT) + "px";
-      });
-      const end = () => { if (!dragging) return; dragging = false; pip.classList.remove("is-dragging"); snap(); };
-      pip.addEventListener("pointerup", end);
-      pip.addEventListener("pointercancel", end);
-      pip.addEventListener("click", (e) => {
-        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
-        navTo("Live");
-      });
-    })();
+      return {
+        minL: PIP_SIDE, maxL: phone.clientWidth - pip.offsetWidth - PIP_SIDE,
+        minT: PIP_TOP_MIN, maxT: Math.max(PIP_TOP_MIN, maxT),
+      };
+    }
+    // Pin the PiP to its current corner, re-clamped into the live bounds.
+    function repositionPip() {
+      const b = pipBounds();
+      pip.style.left = (pipCornerH === "l" ? b.minL : b.maxL) + "px";
+      pip.style.top = (pipCornerV === "t" ? b.minT : b.maxT) + "px";
+      pip.style.right = "auto"; pip.style.bottom = "auto";
+    }
+    pip.addEventListener("pointerdown", (e) => {
+      pipDragging = true; pipMoved = false;
+      const pr = phone.getBoundingClientRect(), r = pip.getBoundingClientRect(), s = pipScale();
+      pipOX = (r.left - pr.left) / s; pipOY = (r.top - pr.top) / s;
+      pipSX = e.clientX; pipSY = e.clientY;
+      pip.style.left = pipOX + "px"; pip.style.top = pipOY + "px";
+      pip.style.right = "auto"; pip.style.bottom = "auto";
+      pip.classList.add("is-dragging");
+      pip.setPointerCapture(e.pointerId);
+    });
+    pip.addEventListener("pointermove", (e) => {
+      if (!pipDragging) return;
+      const s = pipScale();
+      const dx = (e.clientX - pipSX) / s, dy = (e.clientY - pipSY) / s;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) pipMoved = true;
+      const b = pipBounds();
+      pip.style.left = pipClamp(pipOX + dx, b.minL, b.maxL) + "px";
+      pip.style.top = pipClamp(pipOY + dy, b.minT, b.maxT) + "px";
+    });
+    function pipEnd() {
+      if (!pipDragging) return;
+      pipDragging = false; pip.classList.remove("is-dragging");
+      pipCornerH = (pip.offsetLeft + pip.offsetWidth / 2) < phone.clientWidth / 2 ? "l" : "r";
+      pipCornerV = (pip.offsetTop + pip.offsetHeight / 2) < phone.clientHeight / 2 ? "t" : "b";
+      repositionPip();
+    }
+    pip.addEventListener("pointerup", pipEnd);
+    pip.addEventListener("pointercancel", pipEnd);
+    pip.addEventListener("click", (e) => {
+      if (pipMoved) { e.preventDefault(); e.stopPropagation(); pipMoved = false; return; }
+      navTo("Live");
+    });
 
     // Mute toggles between muted / unmuted speaker
     const muteBtn = document.querySelector(".vc-btn");
