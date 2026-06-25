@@ -180,8 +180,9 @@
     .nav-icon.back { left: 8px; }
     .nav-icon.account { right: 8px; }
 
-    /* Mute control (right rail) */
-    .video-controls { position: absolute; top: 56px; right: 42px; z-index: 6; }
+    /* Stream controls sit on the tabs row, right-aligned, so they don't
+       crowd the centered wordmark on the row above. */
+    .video-controls { position: absolute; top: 100px; right: 8px; z-index: 6; }
     .vc-btn {
       width: 40px; height: 40px; border: 0; background: none;
       color: #fff; display: grid; place-items: center; cursor: pointer;
@@ -189,7 +190,7 @@
     }
 
     /* Full-screen / landscape watch — available to all users by default */
-    .fs-controls { position: absolute; top: 56px; right: 76px; z-index: 6; }
+    .fs-controls { position: absolute; top: 100px; right: 42px; z-index: 6; }
     .fs-btn {
       width: 40px; height: 40px; border: 0; background: none;
       color: #fff; display: grid; place-items: center; cursor: pointer;
