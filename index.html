@@ -237,9 +237,11 @@
       display: block;
     }
     .pip-video.is-dragging { cursor: grabbing; transition: none; }
-    /* Pre-sale there's no live feed; in landscape the full video is on screen. */
+    /* Pre-sale there's no live feed; in landscape the full video is on screen;
+       on Live view the full feed is already playing behind it. */
     .phone.is-holding .pip-video,
-    .phone.landscape .pip-video { display: none; }
+    .phone.landscape .pip-video,
+    .phone:not(.lotfull-open):not(.view-all-lots) .pip-video { display: none; }
     .pip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pip-live {
       position: absolute; top: 8px; left: 8px;
