@@ -224,15 +224,19 @@
     .phone.landscape .fs-live { display: inline-flex; }
 
     /* Picture-in-picture live feed — a small floating player shown while the
-       Lot view / All lots panels cover the main video. Pinned top-right, clear
-       of the bidding panel at the bottom. Tap to jump back to the live view. */
+       Lot view / All lots panels cover the main video. Draggable; pins to the
+       bottom-right by default and snaps to the nearest corner. Tap (without
+       dragging) to jump back to the live view. */
     .pip-video {
-      position: absolute; top: 110px; right: 12px; z-index: 13;
-      width: 112px; height: 150px; padding: 0; border: 0; cursor: pointer;
+      position: absolute; bottom: 24px; right: 12px; z-index: 13;
+      width: 112px; height: 150px; padding: 0; border: 0; cursor: grab;
       border-radius: 10px; overflow: hidden; background: #000;
       box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+      touch-action: none; user-select: none;
+      transition: left 220ms cubic-bezier(0.22,1,0.36,1), top 220ms cubic-bezier(0.22,1,0.36,1);
       display: none;
     }
+    .pip-video.is-dragging { cursor: grabbing; transition: none; }
     .phone.lotfull-open .pip-video,
     .phone.view-all-lots .pip-video { display: block; }
     /* In landscape watch the full video is already on screen — hide the PiP. */
@@ -1555,8 +1559,8 @@
       }));
 
     const lotRow = document.getElementById("lotDetailsRow");
-    lotRow.addEventListener("click", openSheet);
-    lotRow.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } });
+    lotRow.addEventListener("click", openLotFull);
+    lotRow.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLotFull(); } });
     document.getElementById("sheetGrabber").addEventListener("click", closeSheet);
     document.getElementById("sheetScrim").addEventListener("click", closeSheet);
     document.addEventListener("keydown", (e) => {
@@ -1634,10 +1638,55 @@
     document.querySelectorAll(".tab").forEach((t) =>
       t.addEventListener("click", () => navTo(t.textContent.trim())));
 
-    // PiP live feed: reuse the main video still, tap to return to Live.
-    const pipImg = document.getElementById("pipImg");
-    pipImg.src = document.querySelector(".video").src;
-    document.getElementById("pipVideo").addEventListener("click", () => navTo("Live"));
+    // PiP live feed: reuse the main video still. The player is draggable and
+    // snaps to the nearest corner (defaults to bottom-right). A clean tap
+    // (without dragging) returns to the live view.
+    const pip = document.getElementById("pipVideo");
+    document.getElementById("pipImg").src = document.querySelector(".video").src;
+    (() => {
+      const SIDE = 12, BOTTOM = 24, TOP_MIN = 56;
+      let dragging = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      const scale = () => (pip.getBoundingClientRect().width / pip.offsetWidth) || 1;
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const bounds = () => ({
+        minL: SIDE, maxL: phone.clientWidth - pip.offsetWidth - SIDE,
+        minT: TOP_MIN, maxT: phone.clientHeight - pip.offsetHeight - BOTTOM,
+      });
+      function snap() {
+        const b = bounds();
+        const cx = pip.offsetLeft + pip.offsetWidth / 2;
+        const cy = pip.offsetTop + pip.offsetHeight / 2;
+        pip.style.left = (cx < phone.clientWidth / 2 ? b.minL : b.maxL) + "px";
+        pip.style.top = (cy < phone.clientHeight / 2 ? b.minT : b.maxT) + "px";
+        pip.style.right = "auto"; pip.style.bottom = "auto";
+      }
+      pip.addEventListener("pointerdown", (e) => {
+        dragging = true; moved = false;
+        const pr = phone.getBoundingClientRect(), r = pip.getBoundingClientRect(), s = scale();
+        ox = (r.left - pr.left) / s; oy = (r.top - pr.top) / s;
+        sx = e.clientX; sy = e.clientY;
+        pip.style.left = ox + "px"; pip.style.top = oy + "px";
+        pip.style.right = "auto"; pip.style.bottom = "auto";
+        pip.classList.add("is-dragging");
+        pip.setPointerCapture(e.pointerId);
+      });
+      pip.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        const s = scale();
+        const dx = (e.clientX - sx) / s, dy = (e.clientY - sy) / s;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+        const b = bounds();
+        pip.style.left = clamp(ox + dx, b.minL, b.maxL) + "px";
+        pip.style.top = clamp(oy + dy, b.minT, b.maxT) + "px";
+      });
+      const end = () => { if (!dragging) return; dragging = false; pip.classList.remove("is-dragging"); snap(); };
+      pip.addEventListener("pointerup", end);
+      pip.addEventListener("pointercancel", end);
+      pip.addEventListener("click", (e) => {
+        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
+        navTo("Live");
+      });
+    })();
 
     // Mute toggles between muted / unmuted speaker
     const muteBtn = document.querySelector(".vc-btn");
