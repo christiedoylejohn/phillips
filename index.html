@@ -293,8 +293,11 @@
 
     /* ----- Bid-feed alignment (panel-switchable, mutually exclusive) ----- */
     /* The whole stream sits either centred or hard-left. */
-    .phone.feed-left .bid-history { align-items: flex-start; }
-    .phone.feed-left .bid-row { justify-content: flex-start; gap: 10px; }
+    .phone.feed-left .bid-history { align-items: stretch; }
+    /* Amount on the left, bid type as a right-aligned label */
+    .phone.feed-left .bid-row { justify-content: space-between; gap: 10px; }
+    .phone.feed-left .bid-row > .src-label { display: inline; color: rgba(255,255,255,0.82); font-weight: 500; }
+    .phone.feed-left .bid-row > .you-label { display: inline-flex; }
     .phone.feed-center .bid-history { align-items: center; }
     .phone.feed-center .bid-row { justify-content: center; gap: 10px; }
     /* Left-aligned feed that also shows the bid source */
