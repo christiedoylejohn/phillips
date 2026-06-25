@@ -369,6 +369,15 @@
     .switch.is-on .knob { transform: translateX(32px); }
     .toggle-caption { font-size: 12px; font-weight: 600; color: var(--black-75); }
 
+    /* Outbid notice — sits above the CTA so the button stays tappable to re-bid */
+    .outbid-notice {
+      display: none; align-items: center; gap: 8px;
+      margin-top: 14px; margin-bottom: -2px; padding: 9px 12px;
+      background: #fdeaea; color: #c20000; border: 1px solid #f1b9b9;
+      font-size: 13px; font-weight: 600; line-height: 16px;
+    }
+    .outbid-notice.show { display: flex; }
+    .outbid-notice .ob-dot { width: 7px; height: 7px; border-radius: 50%; background: #ea0404; flex: none; }
     .place-bid {
       margin-top: 14px; width: 100%; height: 48px; border-radius: 0; border: 0;
       background: var(--black); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
@@ -818,6 +827,7 @@
           </div>
         </div>
 
+        <div class="outbid-notice" id="outbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="placeBid">Place bid $800,000</button>
       </div>
     </div>
@@ -857,6 +867,7 @@
             <span class="toggle-caption" id="sheetToggleCaption">Bidding on</span>
           </div>
         </div>
+        <div class="outbid-notice" id="sheetOutbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="sheetPlaceBid">Place bid $800,000</button>
       </div>
     </div>
@@ -905,6 +916,7 @@
             <span class="toggle-caption" id="lfToggleCap">Bidding on</span>
           </div>
         </div>
+        <div class="outbid-notice" id="lfOutbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="lfPlaceBid">Place bid $800,000</button>
       </div>
     </div>
@@ -1010,6 +1022,7 @@
       <div class="panel-row">
         <button data-action="fairWarning">Fair warning</button>
         <button data-action="hammer">Hammer (sold)</button>
+        <button data-action="nextLot">Next lot</button>
       </div>
     </div>
 
@@ -1062,9 +1075,12 @@
     const toggleCap    = document.getElementById("toggleCaption");
     const streamToggle = document.getElementById("streamToggle");
     const streamLabel  = document.getElementById("streamToggleLabel");
+    const outbidNotice      = document.getElementById("outbidNotice");
+    const sheetOutbidNotice = document.getElementById("sheetOutbidNotice");
+    const lfOutbidNotice    = document.getElementById("lfOutbidNotice");
 
     const INCREMENT = 100000;
-    const OPENING   = 800000; // a fresh lot opens just below the low estimate ($1M)
+    let OPENING     = 800000; // a fresh lot opens just below the low estimate; updated per lot
     let current     = OPENING;
 
     const fmt = (n) => "$" + n.toLocaleString("en-US");
@@ -1088,6 +1104,7 @@
     let cardStyle     = "floating"; // "floating" | "fullbleed"
     let outbid        = false;     // your leading bid was just overtaken
     let outbidTimer   = null;
+    let lotIndex      = 0;         // index into ALL_LOTS of the current live lot
     // A fresh lot's first bid takes the opening price; later bids increment.
     const nextBid = () => (bids.length ? current + INCREMENT : OPENING);
 
@@ -1295,20 +1312,49 @@
       current = nextBid();
       bids.push({ src, amt: current });
       fairWarning = false; // a new bid lifts the warning
-      // Outbid notice shows for 1s, then the CTA returns to "Place bid <next>" (Figma 7746:42536)
+      // Outbid notice shows above the CTA for a few seconds so you can re-bid quickly.
       if (src === "Mine") {
         outbid = false;
         clearTimeout(outbidTimer);
       } else if (wasLeading && userState === "registered") {
         outbid = true;
         clearTimeout(outbidTimer);
-        outbidTimer = setTimeout(() => { outbid = false; syncBidding(); }, 1000);
+        outbidTimer = setTimeout(() => { outbid = false; syncBidding(); }, 5000);
       }
       renderHistory();
       currentLabel.textContent = "Current bid";
       currentAmt.textContent = fmt(current);
       currentAmt.classList.add("bump");
       setTimeout(() => currentAmt.classList.remove("bump"), 200);
+      syncBidding();
+      syncPanel();
+    }
+
+    // Advance to the next lot in lot-number order and open it for fresh bidding.
+    function advanceLot() {
+      lotIndex = (lotIndex + 1) % ALL_LOTS.length;
+      const l = ALL_LOTS[lotIndex];
+      const est = l.estimate || "$1,000,000–1,500,000";
+      const low = parseInt((est.replace(/,/g, "").match(/\d+/) || ["1000000"])[0], 10);
+      OPENING = Math.round(low * 0.8 / 10000) * 10000; // opens ~20% below the low estimate
+      const estimateHtml = "<b>Estimate</b> " + est;
+      // Reuse the existing live+sheet renderer
+      renderLot({ no: l.no, maker: l.maker, title: l.title, thumb: l.thumb,
+                  symbols: l.symbols || "", reserve: l.reserve || "", estimate: estimateHtml });
+      // ...and mirror into the full-screen lot view (renderLot doesn't touch it)
+      document.getElementById("lfThumb").src = l.thumb;
+      document.getElementById("lfLotNo").textContent = l.no;
+      document.getElementById("lfLotSymbols").textContent = l.symbols || "";
+      document.getElementById("lfLotReserve").textContent = l.reserve || "";
+      document.getElementById("lfLotMaker").textContent = l.maker;
+      document.getElementById("lfLotTitle").textContent = l.title;
+      document.getElementById("lfLotEstimate").innerHTML = estimateHtml;
+      // Open the new lot for fresh bidding
+      bids = []; current = OPENING; lotState = "live"; fairWarning = false;
+      outbid = false; clearTimeout(outbidTimer);
+      currentLabel.textContent = "Opening bid";
+      currentAmt.textContent = fmt(OPENING);
+      renderHistory();
       syncBidding();
       syncPanel();
     }
@@ -1376,6 +1422,9 @@
       const leading = bids.length > 0 && bids[bids.length - 1].src === "Mine";
       toggle.setAttribute("aria-pressed", String(on));
       toggleCap.textContent = on ? "Bidding on" : "Toggle on to bid";
+      // Outbid notice sits ABOVE the CTA (the button stays active so you can re-bid).
+      const showOutbid = outbid && on && userState === "registered" && lotState !== "sold";
+      [outbidNotice, sheetOutbidNotice, lfOutbidNotice].forEach((n) => n && n.classList.toggle("show", showOutbid));
       if (lotState === "sold") {
         const won = leading && userState === "registered";
         placeBid.classList.remove("is-with-you", "is-outbid");
@@ -1388,14 +1437,6 @@
       }
       placeBid.classList.remove("is-won");
       if (applyUserCta()) { mirrorSheet(); return; }
-      if (outbid && on && userState === "registered") {
-        placeBid.classList.remove("is-with-you", "is-disabled-state");
-        placeBid.classList.add("is-outbid");
-        placeBid.disabled = true;     // brief 1s notice; reverts to "Place bid" after
-        placeBid.textContent = "You were outbid";
-        mirrorSheet();
-        return;
-      }
       placeBid.classList.remove("is-outbid");
       placeBid.classList.toggle("is-with-you", leading);
       placeBid.classList.toggle("is-disabled-state", !leading && !on);
@@ -1460,6 +1501,7 @@
           syncBidding();
           syncPanel();
         }
+        else if (a === "nextLot") advanceLot();
         else if (a === "holding") setSaleState("holding");
         else if (a === "goLive") setSaleState("live");
         else if (a === "reset") {
