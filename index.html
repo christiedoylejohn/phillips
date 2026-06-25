@@ -223,10 +223,10 @@
     }
     .phone.landscape .fs-live { display: inline-flex; }
 
-    /* Picture-in-picture live feed — a small floating player shown while the
-       Lot view / All lots panels cover the main video. Draggable; pins to the
-       bottom-right by default and snaps to the nearest corner. Tap (without
-       dragging) to jump back to the live view. */
+    /* Picture-in-picture live feed — a small floating player available on every
+       page. Draggable; pins to the bottom-right by default and snaps to the
+       nearest corner, always staying clear of the bidding controls. Tap
+       (without dragging) to jump back to the live view. */
     .pip-video {
       position: absolute; bottom: 24px; right: 12px; z-index: 13;
       width: 112px; height: 150px; padding: 0; border: 0; cursor: grab;
@@ -234,12 +234,11 @@
       box-shadow: 0 6px 20px rgba(0,0,0,0.28);
       touch-action: none; user-select: none;
       transition: left 220ms cubic-bezier(0.22,1,0.36,1), top 220ms cubic-bezier(0.22,1,0.36,1);
-      display: none;
+      display: block;
     }
     .pip-video.is-dragging { cursor: grabbing; transition: none; }
-    .phone.lotfull-open .pip-video,
-    .phone.view-all-lots .pip-video { display: block; }
-    /* In landscape watch the full video is already on screen — hide the PiP. */
+    /* Pre-sale there's no live feed; in landscape the full video is on screen. */
+    .phone.is-holding .pip-video,
     .phone.landscape .pip-video { display: none; }
     .pip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pip-live {
@@ -1271,6 +1270,7 @@
         // (Figma 7580:63428) — the user opts in via the toggle.
         setExpanded(false);
         syncBidding();
+        repositionPip(); // PiP becomes visible once live — clear of the bid card
       }
       syncPanel();
       mirrorSheet();
@@ -1652,16 +1652,22 @@
     const pipScale = () => (pip.getBoundingClientRect().width / pip.offsetWidth) || 1;
     const pipClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     function pipBounds() {
-      // The PiP can never overlap the bidding panel: in Lot view the bottom
-      // limit is the top of the bidding CTA, not the bottom of the screen.
-      let maxT = phone.clientHeight - pip.offsetHeight - PIP_BOTTOM;
+      // The PiP can never overlap the bidding controls: the bottom limit is the
+      // top of whatever bidding UI the current page shows, not the screen edge.
+      let cap = phone.clientHeight - PIP_BOTTOM;
       if (phone.classList.contains("lotfull-open")) {
         const cta = lotFull.querySelector(".sheet-cta");
-        if (cta) maxT = Math.min(maxT, cta.offsetTop - pip.offsetHeight - PIP_GAP);
+        if (cta) cap = Math.min(cap, cta.offsetTop - PIP_GAP); // transform-immune
+      } else if (!phone.classList.contains("view-all-lots")) {
+        const card = document.querySelector(".bid-card"); // Live view bid card
+        if (card) {
+          const s = pipScale(), pr = phone.getBoundingClientRect();
+          cap = Math.min(cap, (card.getBoundingClientRect().top - pr.top) / s - PIP_GAP);
+        }
       }
       return {
         minL: PIP_SIDE, maxL: phone.clientWidth - pip.offsetWidth - PIP_SIDE,
-        minT: PIP_TOP_MIN, maxT: Math.max(PIP_TOP_MIN, maxT),
+        minT: PIP_TOP_MIN, maxT: Math.max(PIP_TOP_MIN, cap - pip.offsetHeight),
       };
     }
     // Pin the PiP to its current corner, re-clamped into the live bounds.
