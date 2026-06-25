@@ -369,15 +369,6 @@
     .switch.is-on .knob { transform: translateX(32px); }
     .toggle-caption { font-size: 12px; font-weight: 600; color: var(--black-75); }
 
-    /* Outbid notice — sits above the CTA so the button stays tappable to re-bid */
-    .outbid-notice {
-      display: none; align-items: center; gap: 8px;
-      margin-top: 14px; margin-bottom: -2px; padding: 9px 12px;
-      background: #fdeaea; color: #c20000; border: 1px solid #f1b9b9;
-      font-size: 13px; font-weight: 600; line-height: 16px;
-    }
-    .outbid-notice.show { display: flex; }
-    .outbid-notice .ob-dot { width: 7px; height: 7px; border-radius: 50%; background: #ea0404; flex: none; }
     .place-bid {
       margin-top: 14px; width: 100%; height: 48px; border-radius: 0; border: 0;
       background: var(--black); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
@@ -827,7 +818,6 @@
           </div>
         </div>
 
-        <div class="outbid-notice" id="outbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="placeBid">Place bid $800,000</button>
       </div>
     </div>
@@ -867,7 +857,6 @@
             <span class="toggle-caption" id="sheetToggleCaption">Bidding on</span>
           </div>
         </div>
-        <div class="outbid-notice" id="sheetOutbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="sheetPlaceBid">Place bid $800,000</button>
       </div>
     </div>
@@ -916,7 +905,6 @@
             <span class="toggle-caption" id="lfToggleCap">Bidding on</span>
           </div>
         </div>
-        <div class="outbid-notice" id="lfOutbidNotice"><span class="ob-dot"></span>You were outbid — place a bid to stay in</div>
         <button class="place-bid" id="lfPlaceBid">Place bid $800,000</button>
       </div>
     </div>
@@ -1075,9 +1063,6 @@
     const toggleCap    = document.getElementById("toggleCaption");
     const streamToggle = document.getElementById("streamToggle");
     const streamLabel  = document.getElementById("streamToggleLabel");
-    const outbidNotice      = document.getElementById("outbidNotice");
-    const sheetOutbidNotice = document.getElementById("sheetOutbidNotice");
-    const lfOutbidNotice    = document.getElementById("lfOutbidNotice");
 
     const INCREMENT = 100000;
     let OPENING     = 800000; // a fresh lot opens just below the low estimate; updated per lot
@@ -1312,14 +1297,14 @@
       current = nextBid();
       bids.push({ src, amt: current });
       fairWarning = false; // a new bid lifts the warning
-      // Outbid notice shows above the CTA for a few seconds so you can re-bid quickly.
+      // Outbid notice shows for 1s, then the CTA returns to "Place bid <next>" (Figma 7746:42536)
       if (src === "Mine") {
         outbid = false;
         clearTimeout(outbidTimer);
       } else if (wasLeading && userState === "registered") {
         outbid = true;
         clearTimeout(outbidTimer);
-        outbidTimer = setTimeout(() => { outbid = false; syncBidding(); }, 5000);
+        outbidTimer = setTimeout(() => { outbid = false; syncBidding(); }, 1000);
       }
       renderHistory();
       currentLabel.textContent = "Current bid";
@@ -1422,9 +1407,6 @@
       const leading = bids.length > 0 && bids[bids.length - 1].src === "Mine";
       toggle.setAttribute("aria-pressed", String(on));
       toggleCap.textContent = on ? "Bidding on" : "Toggle on to bid";
-      // Outbid notice sits ABOVE the CTA (the button stays active so you can re-bid).
-      const showOutbid = outbid && on && userState === "registered" && lotState !== "sold";
-      [outbidNotice, sheetOutbidNotice, lfOutbidNotice].forEach((n) => n && n.classList.toggle("show", showOutbid));
       if (lotState === "sold") {
         const won = leading && userState === "registered";
         placeBid.classList.remove("is-with-you", "is-outbid");
@@ -1437,6 +1419,14 @@
       }
       placeBid.classList.remove("is-won");
       if (applyUserCta()) { mirrorSheet(); return; }
+      if (outbid && on && userState === "registered") {
+        placeBid.classList.remove("is-with-you", "is-disabled-state");
+        placeBid.classList.add("is-outbid");
+        placeBid.disabled = true;     // brief 1s notice; reverts to "Place bid" after
+        placeBid.textContent = "You were outbid";
+        mirrorSheet();
+        return;
+      }
       placeBid.classList.remove("is-outbid");
       placeBid.classList.toggle("is-with-you", leading);
       placeBid.classList.toggle("is-disabled-state", !leading && !on);
