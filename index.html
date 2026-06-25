@@ -326,13 +326,8 @@
       width: 100%; height: auto; aspect-ratio: 9 / 16;
       object-fit: cover; /* inherit base object-position (22% 18%) so Henry stays framed */
     }
-    /* 9:16 split + lot card OPEN: video shrinks to a complete 9:16 still that sits above the open sheet */
-    .phone.card-stacked.sheet-open .video {
-      inset: 0 0 auto 0; transform: none;
-      width: 100%; height: var(--safe-top); aspect-ratio: auto; /* fill exactly the Henry zone */
-      object-fit: cover;
-    }
-    /* Card opens to the bottom of the Henry zone (the safe line) */
+    /* 9:16 split + lot card OPEN: keep the video at full size (no shrink); the
+       card simply rises over it to the Henry-safe line. */
     .phone.card-stacked.sheet-open .lot-sheet { top: var(--safe-top); }
     .phone.card-stacked.sheet-open .sheet-scrim { opacity: 0; visibility: hidden; pointer-events: none; }
     .phone.card-stacked.sheet-open .lot-handle,
@@ -375,7 +370,7 @@
     .toggle-caption { font-size: 12px; font-weight: 600; color: var(--black-75); }
 
     .place-bid {
-      margin-top: 14px; width: 100%; height: 48px; border-radius: 6px; border: 0;
+      margin-top: 14px; width: 100%; height: 48px; border-radius: 0; border: 0;
       background: var(--black); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
       cursor: pointer; transition: opacity 200ms ease, transform 120ms ease;
     }
@@ -388,7 +383,7 @@
        block down, and add a keyline so the two read as separate sections. */
     .bid-card .lot-details:first-child { margin-top: 0; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
     .bid-card .lot-details:first-child + .bid-top { margin-top: 14px; }
-    .lot-thumb { width: 48px; height: 48px; border-radius: 0; object-fit: cover; flex: none; }
+    .lot-thumb { width: 48px; height: 48px; border-radius: 0; object-fit: contain; flex: none; }
     .lot-text { min-width: 0; flex: 1; }
     .lot-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; }
     .lot-no { font-weight: 600; color: #000; }
@@ -504,7 +499,7 @@
        scrim over the video (the .sheet-scrim layer below). */
     .lot-sheet {
       position: absolute; left: 0; right: 0; bottom: 0; top: 25%;
-      z-index: 9; background: #fff; border-radius: 6px 6px 0 0;
+      z-index: 9; background: #fff; border-radius: 0;
       display: flex; flex-direction: column;
       transform: translateY(100%); visibility: hidden;
       transition: transform 460ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 460ms;
@@ -638,7 +633,7 @@
     .account-email { font-size: 12px; line-height: 16px; color: #545454; margin-top: 4px; }
     .account-btn {
       height: 48px; width: 100%; background: #fff; border: 1px solid #000;
-      border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600;
+      border-radius: 0; font-family: inherit; font-size: 14px; font-weight: 600;
       color: #000; cursor: pointer; transition: background 140ms ease;
     }
     .account-btn:active { background: #f3f1ee; }
@@ -704,7 +699,7 @@
     .al-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3d0a; animation: livePulse 1.8s ease-out infinite; }
     .al-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #eceae7; cursor: pointer; }
     .al-row.is-live { background: #f9f8f7; }
-    .al-thumb { width: 72px; height: 72px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 0; flex: none; background: #eee; }
+    .al-thumb { width: 72px; height: 72px; aspect-ratio: 1 / 1; object-fit: contain; border-radius: 0; flex: none; background: #eee; }
     .al-info { flex: 1; min-width: 0; }
     .al-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 2px; }
     .al-no { font-weight: 600; color: #000; }
@@ -1287,6 +1282,8 @@
       cardStyle = c;
       phone.classList.toggle("card-fullbleed", c === "fullbleed");
       phone.classList.toggle("card-stacked", c === "stacked");
+      // Split view defaults to the lot card open; other styles default closed.
+      if (c === "stacked") openSheet(); else closeSheet();
       syncPanel();
     }
 
