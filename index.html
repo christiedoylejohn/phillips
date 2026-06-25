@@ -166,11 +166,49 @@
     .nav-icon.back { left: 8px; }
     .nav-icon.account { right: 8px; }
 
-    /* Mute control (right rail) */
-    .video-controls { position: absolute; top: 56px; right: 48px; z-index: 6; }
+    /* Mute + fullscreen controls (right rail) */
+    .video-controls {
+      position: absolute; top: 56px; right: 48px; z-index: 6;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
     .vc-btn {
       width: 40px; height: 40px; border: 0; background: none;
       color: #fff; display: grid; place-items: center; cursor: pointer;
+      filter: drop-shadow(0 1px 6px rgba(0,0,0,0.5));
+    }
+
+    /* ===== Landscape video (view only) — rotated fullscreen feed ===== */
+    .fullscreen-stage {
+      position: absolute; inset: 0; z-index: 50; background: #000;
+      display: none;
+    }
+    .phone.is-fullscreen .fullscreen-stage { display: block; }
+    /* The rotor is sized to the frame's landscape footprint, then turned 90°
+       so the portrait phone reads as a landscape device. Everything inside it
+       (feed + controls) turns with it and lands upright. */
+    .fs-rotor {
+      position: absolute; top: 50%; left: 50%;
+      width: var(--frame-h); height: var(--frame-w);
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+    .fs-video {
+      width: 100%; height: 100%; object-fit: cover; object-position: 22% 18%;
+      display: block;
+    }
+    .fs-grad {
+      position: absolute; top: 0; left: 0; right: 0; height: 96px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: none;
+    }
+    .fs-live {
+      position: absolute; top: 20px; left: 24px;
+      display: inline-flex; align-items: center; gap: 8px;
+      color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.01em;
+    }
+    .fs-exit {
+      position: absolute; top: 14px; right: 18px;
+      width: 40px; height: 40px; border: 0; background: none; color: #fff;
+      display: grid; place-items: center; cursor: pointer;
       filter: drop-shadow(0 1px 6px rgba(0,0,0,0.5));
     }
 
@@ -405,7 +443,7 @@
        success-green, informational rather than actionable, flashes once
        when your bid takes the lead. */
     .place-bid.is-with-you {
-      background: #00cc39; color: #fff; cursor: default;
+      background: #ec4899; color: #fff; cursor: default;
     }
     .place-bid.is-with-you:disabled { opacity: 1; }
     /* Outbid CTA (Figma 7746:42536): destructive-red, holds until you re-bid. */
@@ -663,11 +701,26 @@
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6"></circle><path d="M5.5 19.5a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
     </button>
 
-    <!-- Mute -->
+    <!-- Mute + fullscreen -->
     <div class="video-controls">
       <button class="vc-btn" aria-label="Unmute">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 9v6h3l5 4V5L8 9H5z" fill="currentColor"></path><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
       </button>
+      <button class="vc-btn" id="fsEnter" aria-label="View fullscreen">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+    </div>
+
+    <!-- ===== Landscape video (view only) ===== -->
+    <div class="fullscreen-stage" id="fullscreenStage" aria-hidden="true">
+      <div class="fs-rotor">
+        <img class="fs-video" id="fsVideo" alt="Live auction feed">
+        <div class="fs-grad" aria-hidden="true"></div>
+        <span class="fs-live"><span class="tab-dot"></span>Live</span>
+        <button class="fs-exit" id="fsExit" aria-label="Exit fullscreen">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 4H5a1 1 0 00-1 1v4M15 4h4a1 1 0 011 1v4M9 20H5a1 1 0 01-1-1v-4M15 20h4a1 1 0 001-1v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </button>
+      </div>
     </div>
 
     <!-- ===== Holding screen (pre-sale, Figma 7580:63634) ===== -->
@@ -798,7 +851,6 @@
         </div>
         <hr class="account-divider">
         <div id="accountIdentity" style="">
-          <div class="account-eyebrow" id="accountPaddle" style="">Registered as paddle 7000</div>
           <div class="account-name">Mr Joseph Doe</div>
           <div class="account-email">joe.doe1989@gmail.com</div>
         </div>
@@ -1355,17 +1407,14 @@
     function renderAccountSheet() {
       const body = document.getElementById("accountBody");
       const identity = document.getElementById("accountIdentity");
-      const paddle = document.getElementById("accountPaddle");
       const btn = document.getElementById("accountBtn");
       if (userState === "registered") {
         body.textContent = "You are registered for the auction and can bid live in the Digital Saleroom. For further assistance, please contact our Bids Department.";
         identity.style.display = "";
-        paddle.style.display = "";
         btn.textContent = "View your account";
       } else if (userState === "logged-in") {
         body.textContent = "You are logged in but not yet registered for this auction. Register to bid live in the Digital Saleroom.";
         identity.style.display = "";
-        paddle.style.display = "none";
         btn.textContent = "Register to bid";
       } else {
         body.textContent = "You are watching this auction. Log in or create an account to register and bid live in the Digital Saleroom.";
@@ -1425,6 +1474,21 @@
       muteBtn.innerHTML = muted ? ICON_MUTED : ICON_UNMUTED;
       muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
     });
+
+    // Fullscreen = a view-only landscape feed. Mirror the live image into the
+    // rotor and turn the phone over; no bidding chrome comes along.
+    const fsEnter = document.getElementById("fsEnter");
+    const fsExit  = document.getElementById("fsExit");
+    const fsVideo = document.getElementById("fsVideo");
+    const fsStage = document.getElementById("fullscreenStage");
+    const liveFeed = document.querySelector(".video");
+    function setFullscreen(on) {
+      if (on) fsVideo.src = liveFeed.src;
+      phone.classList.toggle("is-fullscreen", on);
+      fsStage.setAttribute("aria-hidden", String(!on));
+    }
+    fsEnter.addEventListener("click", () => setFullscreen(true));
+    fsExit.addEventListener("click", () => setFullscreen(false));
 
     // Apply default presentation choices so their panel buttons read selected.
     setFeedAlign(feedAlign);
