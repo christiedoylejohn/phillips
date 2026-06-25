@@ -209,8 +209,9 @@
     .phone.landscape .nav-icon,
     .phone.landscape .lot-surface,
     .phone.landscape .holding-screen { display: none; }
-    .phone.landscape .fs-controls { top: 20px; right: 20px; }
-    .phone.landscape .video-controls { top: 20px; right: 60px; }
+    /* Drop the controls below the iOS status bar so they don't overlap it */
+    .phone.landscape .fs-controls { top: 62px; right: 20px; }
+    .phone.landscape .video-controls { top: 62px; right: 60px; }
     /* Live indicator for landscape watch — the only chrome that survives,
        so viewers still know the feed is live once portrait chrome is stripped. */
     .fs-live {
