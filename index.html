@@ -289,6 +289,11 @@
     }
     /* Default layout shows the amount only — the source ("bid type") is hidden. */
     .bid-row > .src-label, .bid-row > .you-label { display: none; }
+    /* Expanded stream ("Show more") always reveals the bid-type/source label,
+       even in the centred layout where it's otherwise hidden. */
+    .phone.is-expanded .bid-row { justify-content: space-between; }
+    .phone.is-expanded .bid-row > .src-label { display: inline; color: rgba(255,255,255,0.82); font-weight: 500; }
+    .phone.is-expanded .bid-row > .you-label { display: inline-flex; }
     .bid-history::-webkit-scrollbar { width: 0; }
     /* No pill background per V1.1 (7580:62351) — icon + text on the scrim */
     .chip {
@@ -403,7 +408,7 @@
     .toggle-caption { font-size: 12px; font-weight: 600; color: var(--black-75); }
 
     .place-bid {
-      margin-top: 14px; width: 100%; height: 48px; border-radius: 6px; border: 0;
+      margin-top: 14px; width: 100%; height: 48px; border-radius: 2px; border: 0;
       background: var(--black); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
       cursor: pointer; transition: opacity 200ms ease, transform 120ms ease;
     }
@@ -411,27 +416,27 @@
     .place-bid:not(:disabled):active { transform: scale(0.98); }
 
     /* Lot details row */
-    .lot-details { display: flex; align-items: center; gap: 10px; margin-top: 14px; cursor: pointer; }
+    .lot-details { display: flex; align-items: stretch; gap: 12px; margin-top: 14px; cursor: pointer; }
     /* Lot card now leads the bid card — drop its top margin, push the bid
        block down, and add a keyline so the two read as separate sections. */
     .bid-card .lot-details:first-child { margin-top: 0; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
     .bid-card .lot-details:first-child + .bid-top { margin-top: 14px; }
-    .lot-thumb { width: 48px; height: 48px; border-radius: 0; object-fit: cover; flex: none; }
+    .lot-thumb { width: auto; height: 48px; align-self: flex-start; aspect-ratio: 1 / 1; border-radius: 0; object-fit: cover; flex: none; }
     .lot-text { min-width: 0; flex: 1; }
-    .lot-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .lot-meta { display: flex; align-items: center; gap: 6px; font-size: 14px; }
     .lot-no { font-weight: 600; color: #000; }
     .lot-reserve { color: var(--reserve-red); font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
     .lot-symbols { margin-left: 6px; font-weight: 500; color: #000; letter-spacing: 0.06em; }
     .lot-symbols:empty { display: none; }
-    .lot-maker { font-family: "Distinct Display", serif; font-size: 15px; line-height: 18px; color: #000; margin-top: 2px;
+    .lot-maker { font-family: "Distinct Display", serif; font-size: 19px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; color: #000; margin-top: 4px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lot-title { font-family: "Distinct Display Italic", serif; font-style: italic; font-size: 14px; line-height: 18px; color: var(--text-muted);
+    .lot-title { font-family: "Distinct Display Italic", serif; font-style: italic; font-size: 16px; line-height: 20px; color: var(--text-muted); margin-top: 1px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Closed (bid) card shows the full cataloguing, like the open sheet */
     .bid-card .lot-maker, .bid-card .lot-title { white-space: normal; overflow: visible; text-overflow: clip; }
-    .lot-estimate { font-size: 14px; line-height: 18px; color: #000; margin-top: 3px; }
+    .lot-estimate { font-size: 16px; line-height: 20px; color: #000; margin-top: 6px; }
     .lot-estimate b { font-weight: 600; }
-    .lot-chev { color: #999; flex: none; }
+    .lot-chev { color: #999; flex: none; align-self: center; }
 
     /* ===================== Holding screen (pre-sale, Figma 7580:63634) ===================== */
     /* Before the sale begins there is no video feed — black holding frame with
@@ -554,7 +559,6 @@
       opacity: 1; visibility: visible; pointer-events: auto;
       transition: opacity 460ms ease, visibility 0s;
     }
-    .phone.sheet-half .sheet-scrim { opacity: 0; visibility: hidden; pointer-events: none; }
     /* Pull bar at the top — drag/tap to send the sheet back down. */
     .sheet-close {
       position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 2;
@@ -564,8 +568,8 @@
     }
     .sheet-close:hover { background: #c8c5bf; }
     .sheet-close svg { display: none; }
-    /* Half-page variant: rise higher, to the Henry-safe line. */
-    .phone.sheet-half .lot-sheet { top: var(--safe-top); }
+    /* Half-page variant: rise to 3/4 of the screen, with the scrim behind it. */
+    .phone.sheet-half .lot-sheet { top: 25%; }
     .sheet-body { flex: 1; overflow-y: auto; padding: 24px 16px 12px; }
     .sheet-body::-webkit-scrollbar { width: 0; }
     .sheet-amount {
@@ -576,8 +580,6 @@
        Image sits in a 1:1 square; contain so the full artwork shows, never cropped. */
     .sheet-lot { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 0 0 16px; }
     .sheet-lot .lot-thumb { width: min(100%, 270px); height: auto; aspect-ratio: 1 / 1; margin: 0 auto; display: block; object-fit: contain; background: transparent; border-radius: 0; }
-    /* Half-page sheet is shorter — shrink the square so the whole image shows without scrolling */
-    .phone.sheet-half .sheet-lot .lot-thumb { width: min(100%, 170px); }
     /* Lot details always exposed (accordion removed) */
     .lot-detail-text { margin-top: 12px; }
     .lot-detail-head { font-size: 12px; font-weight: 600; line-height: 16px; letter-spacing: 0.02em; color: #000; margin-bottom: 4px; }
@@ -624,7 +626,7 @@
 
     .sheet-cta { flex: none; padding: 14px 16px 30px; background: #fff; border-top: 1px solid #eceae7; }
     /* Lot view: drop the keyline above the bidding panel */
-    #lotFull .sheet-cta { border-top: 0; }
+    #lotFull .sheet-cta { border-top: 0; box-shadow: 0 -8px 24px rgba(0,0,0,0.12); }
     .sheet-cta .current-label { font-size: 14px; color: var(--black-75); }
     .sheet-cta .sheet-amount { margin: 2px 0 0; }
     .sheet-cta-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -669,7 +671,7 @@
     .account-email { font-size: 12px; line-height: 16px; color: #545454; margin-top: 4px; }
     .account-btn {
       height: 48px; width: 100%; background: #fff; border: 1px solid #000;
-      border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600;
+      border-radius: 2px; font-family: inherit; font-size: 14px; font-weight: 600;
       color: #000; cursor: pointer; transition: background 140ms ease;
     }
     .account-btn:active { background: #f3f1ee; }
@@ -1210,7 +1212,23 @@
       set(["lotTitle", "sheetLotTitle"], (el) => (el.textContent = lot.title));
       set(["lotEstimate", "sheetLotEstimate"], (el) => (el.innerHTML = lot.estimate));
       set(["lotSymbols", "sheetLotSymbols"], (el) => (el.textContent = lot.symbols || ""));
+      syncLotThumb();
     }
+
+    // Match the bid-card lot thumbnail's height to its text block so the square
+    // image top-aligns with the lot number and runs the full height of the
+    // cataloguing. aspect-ratio:1/1 derives the width from this definite height.
+    function syncLotThumb() {
+      const apply = () => {
+        const row = document.getElementById("lotDetailsRow");
+        const txt = row && row.querySelector(".lot-text");
+        const thumb = document.getElementById("lotThumb");
+        if (txt && thumb && txt.offsetHeight) thumb.style.height = txt.offsetHeight + "px";
+      };
+      apply();                       // synchronous (offsetHeight forces layout)
+      requestAnimationFrame(apply);  // re-sync once styles/fonts settle
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncLotThumb);
 
     // The sheet's bid header and CTA mirror the live card exactly.
     function mirrorSheet() {
