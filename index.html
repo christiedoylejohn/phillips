@@ -354,13 +354,8 @@
       width: 100%; height: auto; aspect-ratio: 9 / 16;
       object-fit: cover; /* inherit base object-position (22% 18%) so Henry stays framed */
     }
-    /* 9:16 split + lot card OPEN: video shrinks to a complete 9:16 still that sits above the open sheet */
-    .phone.card-stacked.sheet-open .video {
-      inset: 0 0 auto 0; transform: none;
-      width: 100%; height: var(--safe-top); aspect-ratio: auto; /* fill exactly the Henry zone */
-      object-fit: cover;
-    }
-    /* Card opens to the bottom of the Henry zone (the safe line) */
+    /* 9:16 split + lot card OPEN: keep the video at full size (no shrink); the
+       card simply rises over it to the Henry-safe line. */
     .phone.card-stacked.sheet-open .lot-sheet { top: var(--safe-top); }
     .phone.card-stacked.sheet-open .sheet-scrim { opacity: 0; visibility: hidden; pointer-events: none; }
     .phone.card-stacked.sheet-open .lot-handle,
@@ -403,7 +398,7 @@
     .toggle-caption { font-size: 12px; font-weight: 600; color: var(--black-75); }
 
     .place-bid {
-      margin-top: 14px; width: 100%; height: 48px; border-radius: 6px; border: 0;
+      margin-top: 14px; width: 100%; height: 48px; border-radius: 0; border: 0;
       background: var(--black); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
       cursor: pointer; transition: opacity 200ms ease, transform 120ms ease;
     }
@@ -416,7 +411,7 @@
        block down, and add a keyline so the two read as separate sections. */
     .bid-card .lot-details:first-child { margin-top: 0; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
     .bid-card .lot-details:first-child + .bid-top { margin-top: 14px; }
-    .lot-thumb { width: 48px; height: 48px; border-radius: 0; object-fit: cover; flex: none; }
+    .lot-thumb { width: 48px; height: 48px; border-radius: 0; object-fit: contain; flex: none; }
     .lot-text { min-width: 0; flex: 1; }
     .lot-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; }
     .lot-no { font-weight: 600; color: #000; }
@@ -532,7 +527,7 @@
        scrim over the video (the .sheet-scrim layer below). */
     .lot-sheet {
       position: absolute; left: 0; right: 0; bottom: 0; top: 25%;
-      z-index: 9; background: #fff; border-radius: 6px 6px 0 0;
+      z-index: 9; background: #fff; border-radius: 0;
       display: flex; flex-direction: column;
       transform: translateY(100%); visibility: hidden;
       transition: transform 460ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 460ms;
@@ -668,7 +663,7 @@
     .account-email { font-size: 12px; line-height: 16px; color: #545454; margin-top: 4px; }
     .account-btn {
       height: 48px; width: 100%; background: #fff; border: 1px solid #000;
-      border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 600;
+      border-radius: 0; font-family: inherit; font-size: 14px; font-weight: 600;
       color: #000; cursor: pointer; transition: background 140ms ease;
     }
     .account-btn:active { background: #f3f1ee; }
@@ -733,7 +728,7 @@
     .al-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3d0a; animation: livePulse 1.8s ease-out infinite; }
     .al-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #eceae7; cursor: pointer; }
     .al-row.is-live { background: #f9f8f7; }
-    .al-thumb { width: 72px; height: 72px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 0; flex: none; background: #eee; }
+    .al-thumb { width: 72px; height: 72px; aspect-ratio: 1 / 1; object-fit: contain; border-radius: 0; flex: none; background: transparent; }
     .al-info { flex: 1; min-width: 0; }
     .al-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 2px; }
     .al-no { font-weight: 600; color: #000; }
@@ -1048,6 +1043,7 @@
       <div class="panel-row">
         <button data-action="fairWarning">Fair warning</button>
         <button data-action="hammer">Hammer (sold)</button>
+        <button data-action="nextLot">Next lot</button>
       </div>
     </div>
 
@@ -1102,7 +1098,7 @@
     const streamLabel  = document.getElementById("streamToggleLabel");
 
     const INCREMENT = 100000;
-    const OPENING   = 800000; // a fresh lot opens just below the low estimate ($1M)
+    let OPENING     = 800000; // a fresh lot opens just below the low estimate; updated per lot
     let current     = OPENING;
 
     const fmt = (n) => "$" + n.toLocaleString("en-US");
@@ -1126,6 +1122,7 @@
     let cardStyle     = "floating"; // "floating" | "fullbleed"
     let outbid        = false;     // your leading bid was just overtaken
     let outbidTimer   = null;
+    let lotIndex      = 0;         // index into ALL_LOTS of the current live lot
     // A fresh lot's first bid takes the opening price; later bids increment.
     const nextBid = () => (bids.length ? current + INCREMENT : OPENING);
 
@@ -1320,6 +1317,8 @@
       cardStyle = c;
       phone.classList.toggle("card-fullbleed", c === "fullbleed");
       phone.classList.toggle("card-stacked", c === "stacked");
+      // Split view defaults to the lot card open; other styles default closed.
+      if (c === "stacked") openSheet(); else closeSheet();
       syncPanel();
     }
 
@@ -1345,6 +1344,39 @@
       currentAmt.textContent = fmt(current);
       currentAmt.classList.add("bump");
       setTimeout(() => currentAmt.classList.remove("bump"), 200);
+      syncBidding();
+      syncPanel();
+    }
+
+    // Advance to the next lot in lot-number order and open it for fresh bidding.
+    function advanceLot() {
+      // Advance from whatever lot is currently shown, so it always steps 1 -> 2 -> 3...
+      const curNo = parseInt(document.getElementById("lotNo").textContent, 10);
+      let idx = ALL_LOTS.findIndex((l) => l.no === curNo);
+      if (idx < 0) idx = lotIndex;
+      lotIndex = (idx + 1) % ALL_LOTS.length;
+      const l = ALL_LOTS[lotIndex];
+      const est = l.estimate || "$1,000,000–1,500,000";
+      const low = parseInt((est.replace(/,/g, "").match(/\d+/) || ["1000000"])[0], 10);
+      OPENING = Math.round(low * 0.8 / 10000) * 10000; // opens ~20% below the low estimate
+      const estimateHtml = "<b>Estimate</b> " + est;
+      // Reuse the existing live+sheet renderer
+      renderLot({ no: l.no, maker: l.maker, title: l.title, thumb: l.thumb,
+                  symbols: l.symbols || "", reserve: l.reserve || "", estimate: estimateHtml });
+      // ...and mirror into the full-screen lot view (renderLot doesn't touch it)
+      document.getElementById("lfThumb").src = l.thumb;
+      document.getElementById("lfLotNo").textContent = l.no;
+      document.getElementById("lfLotSymbols").textContent = l.symbols || "";
+      document.getElementById("lfLotReserve").textContent = l.reserve || "";
+      document.getElementById("lfLotMaker").textContent = l.maker;
+      document.getElementById("lfLotTitle").textContent = l.title;
+      document.getElementById("lfLotEstimate").innerHTML = estimateHtml;
+      // Open the new lot for fresh bidding
+      bids = []; current = OPENING; lotState = "live"; fairWarning = false;
+      outbid = false; clearTimeout(outbidTimer);
+      currentLabel.textContent = "Opening bid";
+      currentAmt.textContent = fmt(OPENING);
+      renderHistory();
       syncBidding();
       syncPanel();
     }
@@ -1493,9 +1525,17 @@
           const soldLine = "<b>Sold for</b> " + fmt(current);
           document.getElementById("lotEstimate").innerHTML = soldLine;
           document.getElementById("sheetLotEstimate").innerHTML = soldLine;
+          document.getElementById("lfLotEstimate").innerHTML = soldLine;
+          // Record the result so it appears in the All-lots "Results" tab (newest first).
+          const soldNo = parseInt(document.getElementById("lotNo").textContent, 10);
+          const si = ALL_LOTS.findIndex((l) => l.no === soldNo);
+          if (si >= 0) { ALL_LOTS[si].sold = true; ALL_LOTS[si].amount = fmt(current); ALL_LOTS[si].live = false; }
+          const activePill = document.querySelector(".al-pill.is-on");
+          renderAllLots(activePill ? activePill.textContent.trim() : "All lots");
           syncBidding();
           syncPanel();
         }
+        else if (a === "nextLot") advanceLot();
         else if (a === "holding") setSaleState("holding");
         else if (a === "goLive") setSaleState("live");
         else if (a === "reset") {
