@@ -345,12 +345,12 @@
        without scrolling. Lot details are hidden in this compact view. */
     .phone.card-stacked.sheet-open .sheet-lot { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 10px; }
     .phone.card-stacked.sheet-open .sheet-lot .lot-thumb {
-      order: -1; width: min(100%, 178px); height: auto; aspect-ratio: 1 / 1;
+      order: -1; width: min(100%, 150px); height: auto; aspect-ratio: 1 / 1;
       margin: 0 auto; object-fit: contain; border-radius: 0;
     }
     .phone.card-stacked.sheet-open .sheet-lot .lot-text { order: 0; flex: none; min-width: 0; }
     /* Reclaim vertical space so a larger image still fits without scrolling */
-    .phone.card-stacked.sheet-open .sheet-body { padding-top: 12px; padding-bottom: 8px; }
+    .phone.card-stacked.sheet-open .sheet-body { padding-top: 24px; padding-bottom: 8px; }
     .phone.card-stacked.sheet-open .sheet-cta { padding: 10px 16px 18px; }
     .phone.card-stacked.sheet-open .lot-detail-text { display: none; }
     .bid-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -1686,6 +1686,10 @@
 
     // Tabs: "Lot view" opens the sheet, "Live" returns to the live view
     function navTo(label) {
+      // While a bottom sheet is open the top nav can't switch views —
+      // tapping it just dismisses the open sheet.
+      if (phone.classList.contains("sheet-open")) { closeSheet(); return; }
+      if (phone.classList.contains("account-open")) { closeAccount(); return; }
       if (label === "Lot view") { openLotFull(); return; }
       if (phone.classList.contains("lotfull-open")) closeLotFull();
       setMainTab(label);
