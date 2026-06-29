@@ -226,34 +226,6 @@
     }
     .phone.landscape .fs-live { display: inline-flex; }
 
-    /* Picture-in-picture live feed — a small floating player available on every
-       page. Draggable; pins to the bottom-right by default and snaps to the
-       nearest corner, always staying clear of the bidding controls. Tap
-       (without dragging) to jump back to the live view. */
-    .pip-video {
-      position: absolute; bottom: 24px; right: 12px; z-index: 13;
-      width: 112px; height: 150px; padding: 0; border: 0; cursor: grab;
-      border-radius: 10px; overflow: hidden; background: #000;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.28);
-      touch-action: none; user-select: none;
-      transition: left 220ms cubic-bezier(0.22,1,0.36,1), top 220ms cubic-bezier(0.22,1,0.36,1);
-      display: block;
-    }
-    .pip-video.is-dragging { cursor: grabbing; transition: none; }
-    /* Pre-sale there's no live feed; in landscape the full video is on screen;
-       on Live view the full feed is already playing behind it. */
-    .phone.is-holding .pip-video,
-    .phone.landscape .pip-video,
-    .phone:not(.lotfull-open):not(.view-all-lots) .pip-video { display: none; }
-    .pip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .pip-live {
-      position: absolute; top: 8px; left: 8px;
-      display: inline-flex; align-items: center; gap: 5px;
-      color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-    }
-    .pip-live .tab-dot { width: 7px; height: 7px; }
-
     /* ===================== The lot card (rises above video) ===================== */
     /* Wrapper anchored to bottom. It holds the rising bid-history chips and the
        white bid card. The whole surface is capped so its top never crosses the
@@ -537,11 +509,12 @@
 
     /* ===================== Lot detail sheet (Figma 7597:49816) ===================== */
     /* Slides up from the bottom and rises exactly to the Henry-safe line —
-       the live video above keeps playing with its aspect/crop unchanged. */
-    /* Default open card covers the lower 75% — the top 25% shows a black
-       scrim over the video (the .sheet-scrim layer below). */
+       the live video above keeps playing with its aspect/crop unchanged, so
+       the sheet never covers Henry. */
+    /* Open card covers everything below the Henry-safe line; the band above it
+       shows the live video dimmed by the .sheet-scrim layer below. */
     .lot-sheet {
-      position: absolute; left: 0; right: 0; bottom: 0; top: 25%;
+      position: absolute; left: 0; right: 0; bottom: 0; top: var(--safe-top);
       z-index: 9; background: #fff; border-radius: 0;
       display: flex; flex-direction: column;
       transform: translateY(100%); visibility: hidden;
@@ -572,8 +545,8 @@
     }
     .sheet-close:hover { background: #c8c5bf; }
     .sheet-close svg { display: none; }
-    /* Half-page variant: rise to 3/4 of the screen, with the scrim behind it. */
-    .phone.sheet-half .lot-sheet { top: 25%; }
+    /* Half-page variant: also pinned to the Henry-safe line, with the scrim behind it. */
+    .phone.sheet-half .lot-sheet { top: var(--safe-top); }
     .sheet-body { flex: 1; overflow-y: auto; padding: 24px 16px 12px; }
     .sheet-body::-webkit-scrollbar { width: 0; }
     .sheet-amount {
@@ -651,12 +624,16 @@
       opacity: 1; visibility: visible;
       transition: opacity 300ms ease, visibility 0s;
     }
+    /* Rises to the same Henry-safe line as the lot split view, so both sheets
+       open to a matching height. */
     .account-sheet {
       background: #fff; border-radius: 4px 4px 0 0; padding: 16px 16px 0;
       display: flex; flex-direction: column; gap: 16px;
+      height: calc(100% - var(--safe-top)); overflow-y: auto;
       transform: translateY(100%);
       transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
     }
+    .account-sheet::-webkit-scrollbar { width: 0; }
     .phone.account-open .account-sheet { transform: none; }
     .account-title {
       font-family: "Distinct Display", serif; font-size: 16px; line-height: 20px;
@@ -819,12 +796,6 @@
 
     <!-- Live indicator — only visible during landscape watch -->
     <span class="fs-live" aria-hidden="true"><span class="tab-dot"></span>Live</span>
-
-    <!-- Picture-in-picture live feed — shown over Lot view & All lots; tap to return to Live -->
-    <button class="pip-video" id="pipVideo" aria-label="Return to live video">
-      <video class="pip-img" id="pipImg" autoplay loop muted playsinline preload="auto"><source src="media/auctioneer-loop.mp4" type="video/mp4"></video>
-      <span class="pip-live"><span class="tab-dot"></span>Live</span>
-    </button>
 
     <!-- ===== Holding screen (pre-sale, Figma 7580:63634) ===== -->
     <div class="holding-screen" aria-hidden="true">
@@ -1305,7 +1276,6 @@
         // (Figma 7580:63428) — the user opts in via the toggle.
         setExpanded(false);
         syncBidding();
-        repositionPip(); // PiP becomes visible once live — clear of the bid card
       }
       syncPanel();
       mirrorSheet();
@@ -1594,7 +1564,6 @@
       const showAll = label === "All lots";
       phone.classList.toggle("view-all-lots", showAll);
       if (allLots) allLots.setAttribute("aria-hidden", String(!showAll));
-      repositionPip();
     }
 
     function openSheet() {
@@ -1724,73 +1693,6 @@
     document.querySelectorAll(".tab").forEach((t) =>
       t.addEventListener("click", () => navTo(t.textContent.trim())));
 
-    // PiP live feed: its own looping muted video. The player is draggable and
-    // snaps to the nearest corner (defaults to bottom-right). A clean tap
-    // (without dragging) returns to the live view.
-    const pip = document.getElementById("pipVideo");
-    const PIP_SIDE = 12, PIP_BOTTOM = 24, PIP_TOP_MIN = 56, PIP_GAP = 12;
-    let pipCornerH = "r", pipCornerV = "b";
-    let pipDragging = false, pipMoved = false, pipSX = 0, pipSY = 0, pipOX = 0, pipOY = 0;
-    const pipScale = () => (pip.getBoundingClientRect().width / pip.offsetWidth) || 1;
-    const pipClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    function pipBounds() {
-      // The PiP can never overlap the bidding controls: the bottom limit is the
-      // top of whatever bidding UI the current page shows, not the screen edge.
-      let cap = phone.clientHeight - PIP_BOTTOM;
-      if (phone.classList.contains("lotfull-open")) {
-        const cta = lotFull.querySelector(".sheet-cta");
-        if (cta) cap = Math.min(cap, cta.offsetTop - PIP_GAP); // transform-immune
-      } else if (!phone.classList.contains("view-all-lots")) {
-        const card = document.querySelector(".bid-card"); // Live view bid card
-        if (card) {
-          const s = pipScale(), pr = phone.getBoundingClientRect();
-          cap = Math.min(cap, (card.getBoundingClientRect().top - pr.top) / s - PIP_GAP);
-        }
-      }
-      return {
-        minL: PIP_SIDE, maxL: phone.clientWidth - pip.offsetWidth - PIP_SIDE,
-        minT: PIP_TOP_MIN, maxT: Math.max(PIP_TOP_MIN, cap - pip.offsetHeight),
-      };
-    }
-    // Pin the PiP to its current corner, re-clamped into the live bounds.
-    function repositionPip() {
-      const b = pipBounds();
-      pip.style.left = (pipCornerH === "l" ? b.minL : b.maxL) + "px";
-      pip.style.top = (pipCornerV === "t" ? b.minT : b.maxT) + "px";
-      pip.style.right = "auto"; pip.style.bottom = "auto";
-    }
-    pip.addEventListener("pointerdown", (e) => {
-      pipDragging = true; pipMoved = false;
-      const pr = phone.getBoundingClientRect(), r = pip.getBoundingClientRect(), s = pipScale();
-      pipOX = (r.left - pr.left) / s; pipOY = (r.top - pr.top) / s;
-      pipSX = e.clientX; pipSY = e.clientY;
-      pip.style.left = pipOX + "px"; pip.style.top = pipOY + "px";
-      pip.style.right = "auto"; pip.style.bottom = "auto";
-      pip.classList.add("is-dragging");
-      pip.setPointerCapture(e.pointerId);
-    });
-    pip.addEventListener("pointermove", (e) => {
-      if (!pipDragging) return;
-      const s = pipScale();
-      const dx = (e.clientX - pipSX) / s, dy = (e.clientY - pipSY) / s;
-      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) pipMoved = true;
-      const b = pipBounds();
-      pip.style.left = pipClamp(pipOX + dx, b.minL, b.maxL) + "px";
-      pip.style.top = pipClamp(pipOY + dy, b.minT, b.maxT) + "px";
-    });
-    function pipEnd() {
-      if (!pipDragging) return;
-      pipDragging = false; pip.classList.remove("is-dragging");
-      pipCornerH = (pip.offsetLeft + pip.offsetWidth / 2) < phone.clientWidth / 2 ? "l" : "r";
-      pipCornerV = (pip.offsetTop + pip.offsetHeight / 2) < phone.clientHeight / 2 ? "t" : "b";
-      repositionPip();
-    }
-    pip.addEventListener("pointerup", pipEnd);
-    pip.addEventListener("pointercancel", pipEnd);
-    pip.addEventListener("click", (e) => {
-      if (pipMoved) { e.preventDefault(); e.stopPropagation(); pipMoved = false; return; }
-      navTo("Live");
-    });
 
     // Mute toggles between muted / unmuted speaker
     const muteBtn = document.querySelector(".vc-btn");
