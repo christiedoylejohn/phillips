@@ -627,7 +627,7 @@
     /* Rises to the same Henry-safe line as the lot split view, so both sheets
        open to a matching height. */
     .account-sheet {
-      background: #fff; border-radius: 4px 4px 0 0; padding: 16px 16px 0;
+      background: #fff; border-radius: 4px 4px 0 0; padding: 16px 16px 12px;
       display: flex; flex-direction: column; gap: 16px;
       height: calc(100% - var(--safe-top)); overflow-y: auto;
       transform: translateY(100%);
@@ -654,6 +654,7 @@
       height: 48px; width: 100%; background: #fff; border: 1px solid #000;
       border-radius: 2px; font-family: inherit; font-size: 14px; font-weight: 600;
       color: #000; cursor: pointer; transition: background 140ms ease;
+      margin-top: auto;
     }
     .account-btn:active { background: #f3f1ee; }
     .account-grabber {
