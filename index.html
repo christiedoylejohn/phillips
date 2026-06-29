@@ -525,16 +525,16 @@
       transform: none; visibility: visible;
       transition: transform 460ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
     }
-    /* Black scrim sitting behind the sheet — only the uncovered top is seen.
-       Tapping it pulls the sheet back down. Hidden for the taller half view. */
+    /* Invisible tap-catch layer behind the sheet — no dimming, it only
+       captures taps outside the sheet to pull it back down. */
     .sheet-scrim {
-      position: absolute; inset: 0; z-index: 8; background: rgba(0,0,0,0.5);
-      opacity: 0; visibility: hidden; pointer-events: none;
-      transition: opacity 460ms ease, visibility 0s linear 460ms;
+      position: absolute; inset: 0; z-index: 8; background: transparent;
+      visibility: hidden; pointer-events: none;
+      transition: visibility 0s linear 460ms;
     }
     .phone.sheet-open .sheet-scrim {
-      opacity: 1; visibility: visible; pointer-events: auto;
-      transition: opacity 460ms ease, visibility 0s;
+      visibility: visible; pointer-events: auto;
+      transition: visibility 0s;
     }
     /* Pull bar at the top — drag/tap to send the sheet back down. */
     .sheet-close {
@@ -658,8 +658,8 @@
     }
     .account-btn:active { background: #f3f1ee; }
     .account-grabber {
-      align-self: center; width: 100px; height: 4px; border-radius: 2px;
-      background: #111; margin: 8px 0 12px; cursor: pointer; border: 0; padding: 0;
+      align-self: center; width: 40px; height: 5px; border-radius: 3px;
+      background: #d6d3cd; margin: 0; cursor: pointer; border: 0; padding: 0;
     }
 
     /* Home indicator */
@@ -964,6 +964,7 @@
     <!-- ===== Account sheet (Figma 7580:62351) — logged in & registered ===== -->
     <div class="account-overlay" id="accountOverlay" aria-hidden="true">
       <div class="account-sheet" role="dialog" aria-label="Account and help">
+        <button class="account-grabber" id="accountGrabber" aria-label="Close account sheet"></button>
         <div>
           <div class="account-title">Need Help?</div>
           <p class="account-body" id="accountBody">You are registered for the auction and can bid live in the Digital Saleroom. For further assistance, please contact our Bids Department.</p>
@@ -979,7 +980,6 @@
           <div class="account-email">joe.doe1989@gmail.com</div>
         </div>
         <button class="account-btn" id="accountBtn" type="button">View your account</button>
-        <button class="account-grabber" id="accountGrabber" aria-label="Close account sheet"></button>
       </div>
     </div>
 
